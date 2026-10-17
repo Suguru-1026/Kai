@@ -5,6 +5,7 @@
   const MAX_ELEMENTS = 16777216;
   const INTERNAL = Symbol("KNA.Tensor");
   const states = new WeakMap();
+  const preparedTensorData = new WeakMap();
   let nextTensorId = 1;
   let nextGraphId = 1;
   let gradTrackingEnabled = true;
@@ -194,6 +195,7 @@
         version: 0,
         node: null,
         graphReleased: false,
+        graphRefs: 0,
         disposed: false
       });
     }
@@ -292,6 +294,14 @@
 
     backward(options) {
       return runBackward(this, options);
+    }
+
+    zeroGrad() {
+      const state = assertUsable(this);
+      if (state.grad) {
+        state.grad.dispose();
+        state.grad = null;
+      }
     }
 
     clone() {
@@ -411,14 +421,73 @@
       const state = states.get(this);
       if (state && !state.disposed) {
         state.disposed = true;
-        state.data = null;
-        state.node = null;
-        if (state.grad) {
-          state.grad.dispose();
-          state.grad = null;
+        if (state.graphRefs === 0) {
+          releaseNode(this);
+          cleanupDisposedState(state);
         }
       }
     }
+  }
+
+  function prepareTensorData(tensor, values) {
+    const state = assertUsable(tensor);
+    if (!values || typeof values.length !== "number" || values.length !== state.size) {
+      throw tensorError("TENSOR_SHAPE_MISMATCH", "Updated data length does not match Tensor Shape.");
+    }
+
+    const token = Object.freeze({});
+    preparedTensorData.set(token, {
+      tensor,
+      length: state.size,
+      data: toFloat32Array(values)
+    });
+    return token;
+  }
+
+  function commitTensorDataBatch(updates) {
+    if (!Array.isArray(updates)) {
+      throw tensorError("TENSOR_INVALID_ARGUMENT", "Tensor updates must be an array.");
+    }
+
+    const prepared = updates.map((update) => {
+      if (!Array.isArray(update) || update.length !== 2) {
+        throw tensorError("TENSOR_INVALID_ARGUMENT", "Each update must contain a Tensor and preparation token.");
+      }
+      const [tensor, token] = update;
+      const state = assertUsable(tensor);
+      const payload = preparedTensorData.get(token);
+      if (!payload || payload.tensor !== tensor || payload.length !== state.size) {
+        throw tensorError("TENSOR_INVALID_ARGUMENT", "Invalid prepared Tensor update.");
+      }
+      if (state.graphRefs !== 0) {
+        throw tensorError("TENSOR_ACTIVE_GRAPH", "Cannot update a Tensor referenced by an active graph.");
+      }
+      return { state, token, payload };
+    });
+
+    if (new Set(prepared.map((item) => item.state)).size !== prepared.length) {
+      throw tensorError("TENSOR_INVALID_ARGUMENT", "A Tensor cannot be updated twice in one transaction.");
+    }
+
+    for (const item of prepared) {
+      item.state.data = item.payload.data;
+      item.state.version += 1;
+      preparedTensorData.delete(item.token);
+    }
+  }
+
+  function createCustomOperation(shape, values, inputs, operation, backwardRule) {
+    if (!Array.isArray(inputs) || typeof operation !== "string" || operation.length === 0 ||
+      typeof backwardRule !== "function") {
+      throw tensorError("TENSOR_INVALID_ARGUMENT", "Custom operation metadata is invalid.");
+    }
+    const validated = validateShape(shape);
+    const data = toFloat32Array(values);
+    if (data.length !== validated.size) {
+      throw tensorError("TENSOR_SHAPE_MISMATCH", "Custom operation data does not match Shape.");
+    }
+    const result = createTensor(validated.shape, data);
+    return recordOperation(result, inputs, operation, backwardRule);
   }
 
   function recordOperation(output, inputs, operation, backwardRule) {
@@ -435,17 +504,48 @@
       backwardRule,
       released: false
     };
+    for (const input of inputs) states.get(input).graphRefs += 1;
     return output;
   }
 
+  function cleanupDisposedState(state) {
+    if (!state.disposed || state.graphRefs !== 0) return;
+    state.data = null;
+    if (state.grad) {
+      state.grad.dispose();
+      state.grad = null;
+    }
+  }
+
+  function releaseNode(tensor, visited = new Set()) {
+    if (visited.has(tensor)) return;
+    visited.add(tensor);
+    const state = states.get(tensor);
+    if (!state) return;
+
+    const node = state.node;
+    if (node) {
+      node.released = true;
+      state.node = null;
+      state.graphReleased = true;
+      for (const input of node.inputs) {
+        const inputState = states.get(input);
+        if (!inputState) continue;
+        inputState.graphRefs = Math.max(0, inputState.graphRefs - 1);
+        if (inputState.disposed && inputState.graphRefs === 0) {
+          releaseNode(input, visited);
+        }
+      }
+    }
+
+    cleanupDisposedState(state);
+  }
+
   function releaseGraph(tensors) {
+    for (const tensor of tensors) releaseNode(tensor);
     for (const tensor of tensors) {
       const state = states.get(tensor);
-      if (state && state.node) {
-        state.node.released = true;
-        state.node = null;
-        state.graphReleased = true;
-      }
+      if (state) cleanupDisposedState(state);
     }
   }
 
@@ -455,7 +555,10 @@
     const visiting = new Set();
 
     function visit(tensor) {
-      const state = assertUsable(tensor);
+      const state = states.get(tensor);
+      if (!state || (state.disposed && state.graphRefs === 0)) {
+        throw tensorError("TENSOR_DISPOSED", "A required graph Tensor has been disposed.");
+      }
       if (state.graphReleased) {
         throw tensorError("AUTOGRAD_GRAPH_RELEASED", "The computation graph has been released.");
       }
@@ -470,7 +573,11 @@
           throw tensorError("AUTOGRAD_GRAPH_RELEASED", "The computation graph has been released.");
         }
         for (const input of state.node.inputs) {
-          if (assertUsable(input).requiresGrad) visit(input);
+          const inputState = states.get(input);
+          if (!inputState) {
+            throw tensorError("AUTOGRAD_INVALID_GRAPH", "A graph input is unavailable.");
+          }
+          if (inputState.requiresGrad) visit(input);
         }
       }
       visiting.delete(tensor);
@@ -483,7 +590,8 @@
   }
 
   function addPendingGradient(pending, tensor, contribution) {
-    const state = assertUsable(tensor);
+    const state = states.get(tensor);
+    if (!state) throw tensorError("AUTOGRAD_INVALID_GRAPH", "A gradient target is unavailable.");
     if (!state.requiresGrad || contribution === null) return;
     if (!(contribution instanceof Float32Array) || contribution.length !== state.size) {
       throw tensorError("AUTOGRAD_GRADIENT_SHAPE", "Backward rule returned an invalid gradient shape.");
@@ -529,7 +637,8 @@
         const outputGradient = pending.get(tensor);
         if (!outputGradient) continue;
 
-        const state = assertUsable(tensor);
+        const state = states.get(tensor);
+        if (!state) throw tensorError("AUTOGRAD_INVALID_GRAPH", "A graph Tensor is unavailable.");
         if (!state.node) continue;
         if (typeof state.node.backwardRule !== "function") {
           throw tensorError(
@@ -550,7 +659,8 @@
       const prepared = [];
       try {
         for (const [tensor, contribution] of pending) {
-          const state = assertUsable(tensor);
+          const state = states.get(tensor);
+          if (!state) throw tensorError("AUTOGRAD_INVALID_GRAPH", "A gradient target is unavailable.");
           const data = Float32Array.from(contribution);
           if (state.grad) {
             const previous = assertUsable(state.grad).data;
@@ -921,7 +1031,46 @@
     }
 
     const result = createTensor(outputShape, output);
-    return recordOperation(result, [input], "max", null);
+    const inputShape = inputState.shape.slice();
+    const outputValues = Float32Array.from(output);
+    const reduced = new Set(axes);
+    const inputStrides = stridesFor(inputShape);
+    const outputStrides = stridesFor(outputShape);
+
+    function outputIndexFor(inputIndex) {
+      const coordinates = coordinatesFor(inputIndex, inputShape, inputStrides);
+      let outputIndex = 0;
+      let outputAxis = 0;
+      for (let inputAxis = 0; inputAxis < inputShape.length; inputAxis += 1) {
+        if (reduced.has(inputAxis)) {
+          if (keepDims) outputAxis += 1;
+        } else {
+          outputIndex += coordinates[inputAxis] * outputStrides[outputAxis];
+          outputAxis += 1;
+        }
+      }
+      return outputIndex;
+    }
+
+    return recordOperation(result, [input], "max", (outputGradient) => {
+      const inputGradient = allocate(inputState.size);
+      const winnerCounts = new Uint32Array(outputSize);
+      for (let inputIndex = 0; inputIndex < inputState.size; inputIndex += 1) {
+        const outputIndex = outputIndexFor(inputIndex);
+        if (inputState.data[inputIndex] === outputValues[outputIndex]) {
+          winnerCounts[outputIndex] += 1;
+        }
+      }
+      for (let inputIndex = 0; inputIndex < inputState.size; inputIndex += 1) {
+        const outputIndex = outputIndexFor(inputIndex);
+        if (inputState.data[inputIndex] === outputValues[outputIndex]) {
+          inputGradient[inputIndex] = toFloat32(
+            outputGradient[outputIndex] / winnerCounts[outputIndex]
+          );
+        }
+      }
+      return [inputGradient];
+    });
   }
 
   function normalizeAxis(axis, rank) {
@@ -1460,4 +1609,10 @@
   global.KNA.ops = ops;
   global.KNA.noGrad = noGrad;
   global.KNA.isGradEnabled = () => gradTrackingEnabled;
+  global.KNA.isGradEnabled = () => gradTrackingEnabled;
+  global.KNA._internal = Object.freeze({
+    prepareTensorData,
+    commitTensorDataBatch,
+    createCustomOperation
+  });
 })(globalThis);
