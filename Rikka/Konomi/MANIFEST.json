@@ -1,0 +1,126 @@
+{
+  "package": "KNA-1.1 Kanami Chat Specialist",
+  "version": "1.2.0",
+  "files": [
+    {
+      "path": "AUDIT-FIXES.md",
+      "sizeBytes": 1212,
+      "sha256": "8b5bfa929763b2ce63e9fa8e00b57dff7a0823fd12600b04234098bd6ceb0f39"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sizeBytes": 501,
+      "sha256": "79b75ebcd92ee9ef0f5c41d99f42cd2206faef90551ee7036e6beb0b63a54c05"
+    },
+    {
+      "path": "README.md",
+      "sizeBytes": 2610,
+      "sha256": "2b60195dd09496f32e5a9b6f625e7a621917c71f3d73d310bf45fa35571d5f27"
+    },
+    {
+      "path": "SPEC-1.0-GAP-REPORT.md",
+      "sizeBytes": 1612,
+      "sha256": "2db3f19f904e383a89527d24abb181fd47363bf4b9119b11ddc5176750436e89"
+    },
+    {
+      "path": "VERIFICATION-RESULTS.json",
+      "sizeBytes": 1524,
+      "sha256": "281a545e7016ffe7fbb77b74d6d61d86398d21c0ea2bbe31e300c421c16991a2"
+    },
+    {
+      "path": "autograd.js",
+      "sizeBytes": 13481,
+      "sha256": "ca63a425a479eb0110514ab6c1b63a787dcfa532835e0b280039f125adff3b8e"
+    },
+    {
+      "path": "chat-dataset.js",
+      "sizeBytes": 18788,
+      "sha256": "93100e700b44daf69ca17f6da0c5dda9fab94fd4c3cb4b7b0b6fd1ae30f292d2"
+    },
+    {
+      "path": "chat-model.js",
+      "sizeBytes": 27475,
+      "sha256": "a8821a6c9cedd8c1dc6cea40f32b9222cea7cf95a3ae3d6a3a02dab93664f53a"
+    },
+    {
+      "path": "chat-session.js",
+      "sizeBytes": 2986,
+      "sha256": "caea4259ec66da516573808186ff42410065c4c943e2389f459377e1d28ffc64"
+    },
+    {
+      "path": "datasets/README.md",
+      "sizeBytes": 587,
+      "sha256": "ffb01cd2ff97dd7ed38670c202890c3cc11cc2b2412a032202591233f44fa387"
+    },
+    {
+      "path": "datasets/kanami-chat-ja-train-v1.1.jsonl",
+      "sizeBytes": 16703,
+      "sha256": "fe209dae3bc4ae0e9cd268ad68f70eba82cb63192bc4b9f5166aee81860b18be"
+    },
+    {
+      "path": "datasets/kanami-chat-ja-v1.jsonl",
+      "sizeBytes": 18892,
+      "sha256": "68f0a18db6b6bb8054c910a2c71fbc393d7a57fd21d2ea4163420495a2a012ca"
+    },
+    {
+      "path": "datasets/kanami-chat-ja-validation-v1.1.jsonl",
+      "sizeBytes": 1781,
+      "sha256": "e359d8b1050f465ccdc5823602a6df861fc03303998b216352eed61dc8fa6305"
+    },
+    {
+      "path": "index.html",
+      "sizeBytes": 28791,
+      "sha256": "eb698c6f39e7634909ec48990ad11910ada3d57bd96429b2ff9e7044095fb561"
+    },
+    {
+      "path": "layer-library.js",
+      "sizeBytes": 9684,
+      "sha256": "0609c37032d377bca36c655a93626c94473ed8742f775e8a63d6cbe218fd3f8b"
+    },
+    {
+      "path": "model-graph.js",
+      "sizeBytes": 3384,
+      "sha256": "3f35b3e600e628c9853023aada8f417d78d83f31b82e6d36ef5ceb303c5e4286"
+    },
+    {
+      "path": "persistence.js",
+      "sizeBytes": 7300,
+      "sha256": "99e46ce827a075948dc58cdda4c91474c7b605e80811186206d4ca7fd8602731"
+    },
+    {
+      "path": "quality-assurance.js",
+      "sizeBytes": 20631,
+      "sha256": "cf6e758b4989d818d24dce91b45cbb8440c41626489717cb4120cae277659c03"
+    },
+    {
+      "path": "runtime.js",
+      "sizeBytes": 2048,
+      "sha256": "9b77876f03317f59ee32b6cddd8542a5de8c72fb807b29e720c2125facab84fd"
+    },
+    {
+      "path": "self-training.js",
+      "sizeBytes": 5174,
+      "sha256": "9aa1e8b60e48ecb46fda876b6f7a276f187824ecadcdc22d1a2d50965ad83ac1"
+    },
+    {
+      "path": "tensor-engine.js",
+      "sizeBytes": 14080,
+      "sha256": "5c0b1341b38896b9c3bc2c55d9d88bf884a07234cc2ca8dd3ad8f3a15f97c211"
+    },
+    {
+      "path": "tokenizer-config.js",
+      "sizeBytes": 3739,
+      "sha256": "e419fff82ff7f311a6a67d515d80ae3961933c0e05b71c748caddc098a8f3c0a"
+    },
+    {
+      "path": "tokenizer.js",
+      "sizeBytes": 6164,
+      "sha256": "ab576ebba63b2e1f3cfb1090c5fbe680d6f0706e9b5f1b0d43e55cbe11302279"
+    },
+    {
+      "path": "training-system.js",
+      "sizeBytes": 10255,
+      "sha256": "079dc93819609b563cf597ceb3f9b679a0853ee1b2f88328479b7bdb7c3ac791"
+    }
+  ]
+}

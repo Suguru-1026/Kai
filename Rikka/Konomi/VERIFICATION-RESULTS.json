@@ -1,0 +1,59 @@
+{
+  "version": "1.2.0",
+  "environment": "Node.js v22.16.0",
+  "javascriptSyntax": "PASS: all 14 JS files",
+  "htmlInlineJavaScriptSyntax": "PASS",
+  "htmlScriptReferences": {
+    "count": 14,
+    "missing": [],
+    "status": "PASS"
+  },
+  "coreRegressionSuite": {
+    "passed": 47,
+    "failed": 0,
+    "status": "PASS"
+  },
+  "selfTrainingIntegrationSmokeTest": {
+    "status": "PASS",
+    "testRounds": 2,
+    "promptsPerRound": 2,
+    "samplesPerPrompt": 1,
+    "roundsCompleted": 2,
+    "generationCount": 4,
+    "acceptedCount": 4,
+    "optimizerUpdates": 4,
+    "optimizerStepCount": 4,
+    "roundStats": [
+      {
+        "round": 1,
+        "generated": 2,
+        "rejected": 0,
+        "trainingExamples": 4,
+        "updates": 2,
+        "meanBatchLoss": 6.189230656425949
+      },
+      {
+        "round": 2,
+        "generated": 2,
+        "rejected": 0,
+        "trainingExamples": 4,
+        "updates": 2,
+        "meanBatchLoss": 6.185720256805457
+      }
+    ],
+    "note": "Small bounded integration smoke test only; not evidence of answer quality or useful self-improvement."
+  },
+  "hardLimits": {
+    "rounds": 3,
+    "prompts": 8,
+    "samplesPerPrompt": 2,
+    "generations": 48,
+    "optimizerUpdates": 24
+  },
+  "browserEndToEnd": "NOT RUN",
+  "limitations": [
+    "Self-generated responses are unverified pseudo-labels.",
+    "Architecture profile change resets weights and optimizer; weight expansion is not implemented.",
+    "Full Chrome/Chromebook end-to-end validation is outstanding."
+  ]
+}
